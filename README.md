@@ -1,1 +1,1 @@
-# -ForestGuard-AI-
+# ForestGuard-AI
