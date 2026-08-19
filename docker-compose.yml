@@ -1,0 +1,67 @@
+# deployment_config/docker-compose.yml
+version: '3.8'
+
+services:
+  forestguard-api:
+    build:
+      context: ..
+      dockerfile: deployment_config/Dockerfile
+    container_name: forestguard-api
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_PATH=/app/database/predictions.db
+      - MODELS_PATH=/app/models
+    volumes:
+      - ../models:/app/models
+      - ../database:/app/database
+      - ../data:/app/data
+      - ../reports:/app/reports
+    networks:
+      - forestguard-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  forestguard-monitor:
+    image: grafana/grafana:latest
+    container_name: forestguard-monitor
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - forestguard-network
+    restart: unless-stopped
+
+  forestguard-db:
+    image: postgres:13
+    container_name: forestguard-db
+    environment:
+      - POSTGRES_DB=forestguard
+      - POSTGRES_USER=forestguard
+      - POSTGRES_PASSWORD=forestguard123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - forestguard-network
+    restart: unless-stopped
+
+networks:
+  forestguard-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:
+  postgres-data:
